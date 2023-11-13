@@ -1,2 +1,13 @@
 npm install @react-navigation/native
 npm install react-native-reanimated react-native-gesture-handler react-native-screens react-native-safe-area-context @react-native-community/masked-view @react-native-navigation/stack
+
+
+create react-native.config.js file in root directory and paste following code and then run 'npx react-native-asset'
+* filename of font should be full name of fontfamily. it is mentioned in details after install. Bcz ios will use the font family full name whereas android will use the font file name. 
+module.exports = {
+    projects: {
+        ios:{},
+        android:{}
+    },
+    assets: ['./assets/fonts/'],
+}
