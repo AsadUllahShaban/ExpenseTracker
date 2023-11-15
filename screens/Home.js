@@ -1,6 +1,7 @@
 import { Animated, Image, StyleSheet, Text, TouchableOpacity, View ,ScrollView, FlatList} from 'react-native'
 import React ,{useRef,useState}from 'react'
 import { COLORS, SIZES, icons, FONTS } from '../constants'
+import { VictoryPie } from 'victory-native'
 
 const Home = () => {
 
@@ -546,6 +547,149 @@ const Home = () => {
         )
     }
 
+    function processCategoryDataToDisplay(){
+        //filter expenses with "confirmed" status
+        let chartData = categories.map(item => {
+            let confirmExpenses = item.expenses.filter( a => a.status = "C" )
+            var total = confirmExpenses.reduce((a,b)=> a + (b.total || 0 ) ,0)
+
+            return {
+                name: item.name,
+                y:total,
+                expenseCount: confirmExpenses.length,
+                color: item.color,
+                id:item.id
+            }
+
+        })
+
+        //filer out categories with no data/expenses
+        let filterChartData = chartData.filter(a => a.y > 0)
+
+        // calculate the total expenses
+        let totalExpense = filterChartData.reduce( (a,b)=> a+ (b.y || 0 ),0)
+
+        //calculate percentage and repopulate chart data
+        let finalChartData = filterChartData.map(item =>{
+            let percentage = (item.y/ totalExpense * 100 ).toFixed(0)
+            return {
+                label:   `${percentage}%`,
+                y:Number(item.y),
+                expenseCount:item.expenseCount,
+                color: item.color,
+                name: item.name,
+                id:item.id
+            }
+        })
+
+        return finalChartData
+    }
+
+    
+    function setSelectCategoryByName(name) {
+        let category = categories.filter(a => a.name == name)
+        setSelectedCategory(category[0])
+    }
+
+    function renderChart() {
+
+        let chartData = processCategoryDataToDisplay()
+        let colorScales= chartData.map(item => item.color)
+        let totalExpenseCount = chartData.reduce((a, b) => a + (b.expenseCount || 0), 0)
+        
+
+        return (
+            <View style={{alignItems: 'center' , justifyContent: 'center'}}>
+                <VictoryPie
+                    data={chartData}
+                    colorScale={colorScales}
+                    labels={datum =>  `${datum.y}`}
+                    radius={({datum})=> (selectedCategory && datum.name == selectedCategory.name  )? SIZES.width * 0.4 : SIZES.width * 0.4 - 10}
+                    innerRadius={70}
+                    labelRadius={({innerRadius}) => (SIZES.width * 0.4 + innerRadius) / 2.5}
+                    style={{
+                        labels:{fill:COLORS.white,...FONTS.body3},
+                        parent: {
+                            ...styles.shadow
+                        }
+                    }}
+                    width={SIZES.width * 0.8}
+                    height={SIZES.width * 0.8}
+                    events={[{
+                        target: 'data',
+                        eventHandlers: {
+                            onPress: ()=> {
+                                return [{
+                                    target: 'labels',
+                                    mutation: props => {
+                                        let categoryName = chartData[props.index].name
+                                        setSelectCategoryByName(categoryName)
+                                    }
+                                }]
+                            }
+                        }
+                    }]}
+                />
+                <View style={{ position: 'absolute', top: '42%', left: "42%" }}>
+                        <Text style={{ ...FONTS.h1, textAlign: 'center' }}>{totalExpenseCount}</Text>
+                        <Text style={{ ...FONTS.body3, textAlign: 'center' }}>Expenses</Text>
+                    </View>
+            </View>
+        )
+        
+        
+    }
+
+    function renderExpenseSummary() {
+        let data = processCategoryDataToDisplay()
+
+        const renderItem = ({ item }) => (
+            <TouchableOpacity
+                style={{
+                    flexDirection: 'row',
+                    height: 40,
+                    paddingHorizontal: SIZES.radius,
+                    borderRadius: 10,
+                    backgroundColor: (selectedCategory && selectedCategory.name == item.name) ? item.color : COLORS.white
+                }}
+                onPress={() => {
+                    let categoryName = item.name
+                    setSelectCategoryByName(categoryName)
+                }}
+            >
+                {/* Name/Category */}
+                <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
+                    <View
+                        style={{
+                            width: 20,
+                            height: 20,
+                            backgroundColor: (selectedCategory && selectedCategory.name == item.name) ? COLORS.white : item.color,
+                            borderRadius: 5
+                        }}
+                    />
+
+                    <Text style={{ marginLeft: SIZES.base, color: (selectedCategory && selectedCategory.name == item.name) ? COLORS.white : COLORS.primary, ...FONTS.h3 }}>{item.name}</Text>
+                </View>
+
+                {/* Expenses */}
+                <View style={{ justifyContent: 'center' }}>
+                    <Text style={{ color: (selectedCategory && selectedCategory.name == item.name) ? COLORS.white : COLORS.primary, ...FONTS.h3 }}>{item.y} USD - {item.label}</Text>
+                </View>
+            </TouchableOpacity>
+        )
+
+        return (
+            <View style={{ padding: SIZES.padding }}>
+                <FlatList
+                    data={data}
+                    renderItem={renderItem}
+                    keyExtractor={item => `${item.id}`}
+                />
+            </View>
+
+        )
+    }
+
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.lightGray2 }}>
             {/* Nav bar section */}
@@ -565,13 +709,13 @@ const Home = () => {
                         {renderIncomingExpenses()}
                     </View>
                 }
-                {/* {
+                {
                     viewMode == "chart" &&
                     <View>
                         {renderChart()}
                         {renderExpenseSummary()}
                     </View>
-                } */}
+                }
             </ScrollView>
 
     </View>
